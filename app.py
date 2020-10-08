@@ -19,6 +19,8 @@ def load_chrome_driver():
     opts.binary_location = chrome_bin
     opts.add_argument("--window-size=1920,1080")
     opts.add_argument("--start-maximized")
+    opts.add_argument('--no-sandbox')
+    opts.add_argument('--disable-dev-shm-usage')
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
