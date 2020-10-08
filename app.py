@@ -10,7 +10,6 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 import time
 
-
 GOOGLE_CHROME_PATH = '/app/.apt/usr/bin/google_chrome'
 CHROMEDRIVER_PATH = '/app/.chromedriver/bin/chromedriver'
 
