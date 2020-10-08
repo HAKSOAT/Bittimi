@@ -45,6 +45,7 @@ def wait_until(driver, by, value):
 
 
 def fetch(product_name, amount, payment_method, id_):
+    print('STARTING WITH ID {}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'.format(id_))
     ff.get('https://www.bitrefill.com/buy')
     search_options = wait_until(ff, By.XPATH, "//*[starts-with(@id, 'downshift-')]")
 
@@ -79,6 +80,8 @@ def fetch(product_name, amount, payment_method, id_):
     my_name = "HAKS"
     recipient_email = "test@gmail.com"
     message = "Send me the 200USD"
+
+    print('MIDDLE WITH ID {}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'.format(id_))
 
     design_type = "Blue"
     gift_designs = wait_until(ff, By.XPATH, "/html/body/div[1]/div/div[2]/section/div[2]/div[5]/div[2]/div/div/form/div[3]")
@@ -130,6 +133,8 @@ def fetch(product_name, amount, payment_method, id_):
     address = wait_until(ff, By.XPATH, "//span[contains(text(), 'To this')]/following-sibling::input[1]").get_attribute('value')
 
     values = {'amount': amount, 'address': address}
+    print('ENDING WITH ID {}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'.format(id_))
+    print(values)
     redis.set(id_, json.dumps(values))
 
 
