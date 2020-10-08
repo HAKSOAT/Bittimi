@@ -130,7 +130,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return jsonify("Success": "I am up and running")
+    return jsonify(success="I am up and running")
 
 @app.route('/pull')
 def pull():
