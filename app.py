@@ -156,7 +156,7 @@ def run():
 @app.route('/pull', methods=['GET'])
 def pull():
     id_ = request.args.get('id')
-    result = redis.get(id_, None)
+    result = redis.get(id_)
     if result is None:
         return jsonify(error = 'The id is invalid')
     else:
