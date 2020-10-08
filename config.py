@@ -1,3 +1,4 @@
+import os
 import redis as r
 from rq import Queue
 
