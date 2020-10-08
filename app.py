@@ -137,3 +137,4 @@ def pull():
 
     return jsonify(amount = amount,
                     address=address)
+
