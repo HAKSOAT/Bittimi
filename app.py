@@ -1,5 +1,8 @@
 import io
 import os
+import base64
+
+from config import q, redis
 
 from flask import Flask, request, jsonify
 from selenium import webdriver
@@ -10,6 +13,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.action_chains import ActionChains
 import time
+
 
 
 
@@ -25,11 +29,6 @@ def load_chrome_driver():
 
 
 ff = load_chrome_driver()
-
-# options = Options()
-# options.headless = True
-
-# ff = webdriver.Firefox(executable_path="../geckodriver.exe", options=options)
 delay = 5
 actionchains = ActionChains(ff)
 
@@ -43,7 +42,8 @@ def wait_until(driver, by, value):
             ff.refresh()
             refresh -= 1
 
-def fetch(product_name, amount, payment_method):
+
+def fetch(product_name, amount, payment_method, id_):
     ff.get('https://www.bitrefill.com/buy')
     search_options = wait_until(ff, By.XPATH, "//*[starts-with(@id, 'downshift-')]")
 
@@ -127,25 +127,38 @@ def fetch(product_name, amount, payment_method):
 
     amount = wait_until(ff, By.XPATH, "//span[contains(text(), 'Send this')]/following-sibling::input[1]").get_attribute('value')
     address = wait_until(ff, By.XPATH, "//span[contains(text(), 'To this')]/following-sibling::input[1]").get_attribute('value')
-    return amount, address
+
+    redis.set(id_, {'amount': amount, 'address': address})
 
 
 app = Flask(__name__)
+
 
 @app.route('/')
 def index():
     return jsonify(success="I am up and running")
 
-@app.route('/pull', methods=['POST'])
-def pull():
+
+@app.route('/run', methods=['POST'])
+def run():
     if request.method == 'POST':
         product_name = request.json['product_name']
         amount = request.json['amount']
         method = request.json['payment_method']
-        amount, address = fetch(product_name, amount, method)
+        id_ = base64.b64encode(os.urandom(6)).decode('ascii')
+        q.enqueue(fetch, product_name, amount, method, id_)
+        redis.set(id_, {})
+        return jsonify(id = id_)
 
-        return jsonify(amount = amount,
-                        address=address)
+
+@app.route('/pull', methods=['GET'])
+def pull():
+    id_ = requests.args.get('id')
+    result = redis.get(id_, None)
+    if result is None:
+        return jsonify(error = 'The id is invalid')
+    else:
+        return jsonify(result=result)
 
 
 if __name__ == "__main__":
