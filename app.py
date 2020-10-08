@@ -11,17 +11,19 @@ from selenium.webdriver.common.action_chains import ActionChains
 import time
 
 
+def load_chrome_driver():
+      options = Options()
 
-GOOGLE_CHROME_PATH = '/app/.apt/usr/bin/google_chrome'
-CHROMEDRIVER_PATH = '/app/.chromedriver/bin/chromedriver'
+      options.binary_location = os.environ.get('GOOGLE_CHROME_BIN')
+      options.add_argument('--headless')
+      options.add_argument('--disable-gpu')
+      options.add_argument('--no-sandbox')
+      options.add_argument('--remote-debugging-port=9222')
+
+      return webdriver.Chrome(executable_path=str(os.environ.get('CHROMEDRIVER_PATH')), chrome_options=options)
 
 
-chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument('--disable-gpu')
-chrome_options.add_argument('--no-sandbox')
-chrome_options.binary_location = GOOGLE_CHROME_PATH
-
-ff = webdriver.Chrome(executable_path=CHROMEDRIVER_PATH, chrome_options=chrome_options)
+ff = load_chrome_driver()
 
 # options = Options()
 # options.headless = True
