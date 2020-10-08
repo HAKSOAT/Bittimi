@@ -17,6 +17,8 @@ def load_chrome_driver():
     chrome_bin = os.environ.get('GOOGLE_CHROME_SHIM', None)
     opts = ChromeOptions()
     opts.binary_location = chrome_bin
+    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument("--start-maximized")
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
