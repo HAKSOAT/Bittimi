@@ -23,7 +23,7 @@ Endpoints:
 		 7. sender -- if not provided, Sendcash is used
 		 8. message -- if not provided "Send you a gift" is used
 	 5. Returns:
-		 6. This endpoint returns an ID. Since Selenium may take between 7-15 seconds, I believed it was best to have a worker running that process. This ID can then be used to retrieve the details.
+		 6. This endpoint returns an ID. Since Selenium may take around 7 seconds, I believed it was best to have a worker running that process. This ID can then be used to retrieve the details.
  2. https://bittimi.herokuapp.com/pull?id=returned_id
 	 3. Method: GET
 	 4. This returns data in the format: {'amount':..., 'address':...}
