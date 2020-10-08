@@ -3,7 +3,8 @@ import os
 import base64
 import json
 
-from config import q, redis
+from config import redis
+from worker import q
 
 from flask import Flask, request, jsonify
 from selenium import webdriver
