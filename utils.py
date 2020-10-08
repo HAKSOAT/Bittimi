@@ -18,7 +18,7 @@ from config import redis
 def validate(data):
     errors = {}
     new_data = {}
-    must_haves = ['product_name', 'amount', 'payment']
+    must_haves = ['product_name', 'amount']
 
     for i in must_haves:
         if not data.get(i, None):
