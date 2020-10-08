@@ -1,6 +1,7 @@
 import io
 import os
 import base64
+import json
 
 from config import q, redis
 
@@ -128,7 +129,8 @@ def fetch(product_name, amount, payment_method, id_):
     amount = wait_until(ff, By.XPATH, "//span[contains(text(), 'Send this')]/following-sibling::input[1]").get_attribute('value')
     address = wait_until(ff, By.XPATH, "//span[contains(text(), 'To this')]/following-sibling::input[1]").get_attribute('value')
 
-    redis.set(id_, {'amount': amount, 'address': address})
+    values = {'amount': amount, 'address': address}
+    redis.set(id_, json.dumps(values))
 
 
 app = Flask(__name__)
@@ -147,7 +149,7 @@ def run():
         method = request.json['payment_method']
         id_ = base64.b64encode(os.urandom(6)).decode('ascii')
         q.enqueue(fetch, product_name, amount, method, id_)
-        redis.set(id_, {})
+        redis.set(id_, json.dumps({}))
         return jsonify(id = id_)
 
 
@@ -158,7 +160,7 @@ def pull():
     if result is None:
         return jsonify(error = 'The id is invalid')
     else:
-        return jsonify(result=result)
+        return jsonify(result=json.loads(result))
 
 
 if __name__ == "__main__":
