@@ -132,15 +132,16 @@ app = Flask(__name__)
 def index():
     return jsonify(success="I am up and running")
 
-@app.route('/pull')
+@app.route('/pull', methods=['POST'])
 def pull():
-    product_name = request.json['product_name']
-    amount = request.json['amount']
-    method = request.json['payment_method']
-    amount, address = fetch(product_name, amount, method)
+    if request.method == 'POST':
+        product_name = request.json['product_name']
+        amount = request.json['amount']
+        method = request.json['payment_method']
+        amount, address = fetch(product_name, amount, method)
 
-    return jsonify(amount = amount,
-                    address=address)
+        return jsonify(amount = amount,
+                        address=address)
 
 
 if __name__ == "__main__":
