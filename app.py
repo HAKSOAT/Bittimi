@@ -7,24 +7,17 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver import ChromeOptions
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.action_chains import ActionChains
 import time
 
 
 
 def load_chrome_driver():
-        options = webdriver.ChromeOptions
-
-        options.binary_location = os.environ.get('GOOGLE_CHROME_BIN')
-        options.add_argument('--headless')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--remote-debugging-port=9222')
-        options.add_argument("--example-flag")
-
-
-        return webdriver.Chrome(executable_path=str(os.environ.get('CHROMEDRIVER_PATH')), chrome_options=options)
+    chrome_bin = os.environ.get('GOOGLE_CHROME_SHIM', None)
+    opts = ChromeOptions()
+    opts.binary_location = chrome_bin
+    return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
 ff = load_chrome_driver()
