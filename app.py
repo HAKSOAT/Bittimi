@@ -12,6 +12,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 import time
 
 
+
 def load_chrome_driver():
       options = Options()
 
