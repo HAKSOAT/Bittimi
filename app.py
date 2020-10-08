@@ -138,3 +138,6 @@ def pull():
     return jsonify(amount = amount,
                     address=address)
 
+
+if __name__ == "__main__":
+    app.run()
