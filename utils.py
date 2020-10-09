@@ -18,7 +18,7 @@ from config import redis
 def validate(data):
     errors = {}
     new_data = {}
-    must_haves = ['product_name', 'amount']
+    must_haves = ['slug', 'amount']
 
     for i in must_haves:
         if not data.get(i, None):
@@ -27,18 +27,17 @@ def validate(data):
     if errors:
         return errors, None
 
-    product_name = data.get('product_name')
-    if not len(product_name):
-        errors['product_name'] = 'Should contain at least one character'
+    slug = data.get('slug')
+    if not len(slug):
+        errors['slug'] = 'Should contain at least one character'
     else:
-        new_data['product_name'] = product_name
+        new_data['slug'] = slug
 
-    amount = int(data.get('amount'))
-    allowed_amounts = [10, 30, 60]
-    if amount not in allowed_amounts:
-        errors['amount'] = 'Invalid amount, can only use {}'.format(', '.join(allowed_amounts))
+    amount = data.get('amount')
+    if not amount.isdigit():
+        errors['amount'] = 'Has to be a digit'
     else:
-        new_data['amount'] = amount
+        new_data['amount'] = int(amount)
 
     color = data.get('color', 'blue').lower()
     allowed_colors = ['green', 'blue', 'red']
@@ -75,33 +74,44 @@ def load_chrome_driver():
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
-def wait_until(driver, by, value):
+def wait_until(driver, by, value, multiple=False):
+    if multiple:
+        checker = EC.presence_of_all_elements_located
+    else:
+        checker = EC.presence_of_element_located
+        
     refresh = 3
     delay = 5
     while refresh:
         try:
-            return WebDriverWait(driver, delay).until(EC.presence_of_element_located((by, value)))
+            return WebDriverWait(driver, delay).until(checker((by, value)))
         except:
-            driver.refresh()
+            ff.refresh()
             refresh -= 1
 
 
-def fetch(id_, product_name, amount, payment, sender, message, color):
-    is_product_valid = False
+def fetch(id_, slug, amount, payment, sender, message, color):
+    is_slug_valid = False
+    is_amount_valid = True
     res_email = "john@doe.com"
     res_name = "John Doe"
     try:
         ff = load_chrome_driver()
         ff.delete_all_cookies()
         actionchains = ActionChains(ff)
-        print('Starting extraction for process: {} with product name: {}'.format(id_, product_name))
+        print('Starting extraction for process: {} with slug: {}'.format(id_, slug))
 
-        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(product_name.split()[0]))
+        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(slug.split()[0]))
 
-        product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(product_name))
+        product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(slug))
         product.click()
 
-        is_product_valid = True
+        is_slug_valid = True
+
+        valid_amounts = wait_until(ff, By.XPATH, "//input[@name='value' and @type='radio']", multiple=True)
+        valid_amounts = [int(i.get_attribute('value')) for i in amounts]
+        if amount not in amounts:
+            is_amount_valid = False
 
         amount_div = wait_until(ff, By.XPATH, "//input[@value='{}']/following-sibling::span[1]".format(amount))
         amount_div.click()
@@ -152,13 +162,17 @@ def fetch(id_, product_name, amount, payment, sender, message, color):
 
         values = {'amount': amount, 'address': address}
         redis.set(id_, json.dumps(values))
-        print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
+        print('Finishing extraction for process: {} with slug: {}'.format(id_, slug))
 
     except Exception as e:
         traceback.print_exc()
-        if not is_product_valid:
+        if not is_slug_valid:
             redis.set(id_, json.dumps(
-                {'error': 'Invalid product name: {}'.format(product_name)}))
+                {'error': 'Invalid slug: {}'.format(slug)}))
+        elif not is_amount_valid:
+            redis.set(id_, json.dumps(
+                {'error': 'Invalid amount, only supports : {}'.format(
+                    ', '.join(valid_amounts))}))
         else:
             redis.set(id_, json.dumps(
                 {'error': 'Something went wrong'}))
