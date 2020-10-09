@@ -16,6 +16,8 @@ Endpoints:
 	 - Takes json with the following must haves as keys:
 		 - slug
 		 - amount
+		 - rec_name
+		 - rec_email
 	 - Other possible keys are:
 		 - color -- if not provided, blue is used
 		 - payment -- if not provided, bitcoin is used

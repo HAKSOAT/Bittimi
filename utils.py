@@ -3,6 +3,7 @@ import random
 import string
 import json
 import traceback
+import re
 
 import requests
 from selenium import webdriver
@@ -19,11 +20,14 @@ from config import redis
 def validate(data):
     errors = {}
     new_data = {}
-    must_haves = ['slug', 'amount']
+    must_haves = ['slug', 'amount', 'rec_email', 'rec_name']
 
-    for i in must_haves:
-        if not data.get(i, None):
-            errors[i] = 'Key is missing'
+    if data is None:
+        errors['message'] = 'No parameters passed'
+    else:
+        for i in must_haves:
+            if not data.get(i, None):
+                errors[i] = 'Key is missing'
 
     if errors:
         return errors, None
@@ -65,6 +69,13 @@ def validate(data):
     else:
         new_data['payment'] = payment
 
+    rec_email = data.get('rec_email', '')
+    if not re.match("[^@]+@[^@]+\.[^@]+", rec_email):
+        errors['rec_email'] = 'Invalid email address'
+    else:
+        new_data['rec_email'] = rec_email
+
+    new_data['rec_name'] = data.get('rec_name', None)
     new_data['sender'] = data.get('sender', 'Sendcash')
     new_data['message'] = data.get('message', 'Sending you a gift')
     
@@ -102,9 +113,7 @@ def wait_until(driver, by, value, multiple=False):
             refresh -= 1
 
 
-def fetch(id_, product_name, amount, payment, sender, message, color):
-    res_email = "john@doe.com"
-    res_name = "John Doe"
+def fetch(id_, product_name, amount, payment, sender, message, color, rec_email, rec_name):
     try:
         ff = load_chrome_driver()
         ff.delete_all_cookies()
@@ -122,17 +131,17 @@ def fetch(id_, product_name, amount, payment, sender, message, color):
         purchase_gift_button = wait_until(ff, By.XPATH, "//span[contains(text(), 'Purchase as gift')]")
         purchase_gift_button.click()
 
-        res_name_input = wait_until(ff, By.XPATH, "//input[@name='gift_recipient_name']")
-        ActionChains(ff).move_to_element(res_name_input).click().perform()
-        res_name_input.send_keys(res_name)
+        rec_name_input = wait_until(ff, By.XPATH, "//input[@name='gift_recipient_name']")
+        ActionChains(ff).move_to_element(rec_name_input).click().perform()
+        rec_name_input.send_keys(rec_name)
 
         senders_name_input = wait_until(ff, By.XPATH, "//input[@name='gift_sender_name']")
         ActionChains(ff).move_to_element(senders_name_input).click().perform()
         senders_name_input.send_keys(sender)
 
-        res_email_input = wait_until(ff, By.XPATH, "//input[@name='gift_recipient_email']")
-        ActionChains(ff).move_to_element(res_email_input).click().perform()
-        res_email_input.send_keys(res_email)
+        rec_email_input = wait_until(ff, By.XPATH, "//input[@name='gift_recipient_email']")
+        ActionChains(ff).move_to_element(rec_email_input).click().perform()
+        rec_email_input.send_keys(rec_email)
 
         message_input = wait_until(ff, By.XPATH, "//textarea[@name='gift_message']")
         ActionChains(ff).move_to_element(message_input).click().perform()
@@ -150,7 +159,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color):
         #Status updates section
         email_part = wait_until(ff, By.XPATH, "//input[@type='email']")
         email_part.clear()
-        email_part.send_keys(res_email)
+        email_part.send_keys('john@doe.com')
         agree_terms = ff.find_element_by_xpath("//input[@name='agree_terms']/following-sibling::div[1]")
         ActionChains(ff).move_to_element(agree_terms).click().perform()
         wait_until(ff, By.XPATH, "//button[contains(text(), 'Continue')]").click()
