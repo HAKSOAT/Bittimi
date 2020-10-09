@@ -159,7 +159,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         #Status updates section
         email_part = wait_until(ff, By.XPATH, "//input[@type='email']")
         email_part.clear()
-        email_part.send_keys('john@doe.com')
+        email_part.send_keys(rec_email)
         agree_terms = ff.find_element_by_xpath("//input[@name='agree_terms']/following-sibling::div[1]")
         ActionChains(ff).move_to_element(agree_terms).click().perform()
         wait_until(ff, By.XPATH, "//button[contains(text(), 'Continue')]").click()
