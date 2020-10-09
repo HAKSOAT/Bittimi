@@ -4,6 +4,7 @@ import string
 import json
 import traceback
 
+import requests
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -27,11 +28,19 @@ def validate(data):
     if errors:
         return errors, None
 
-    slug = data.get('slug')
-    if not len(slug):
-        errors['slug'] = 'Should contain at least one character'
-    else:
-        new_data['slug'] = slug
+    slug = data.get('slug', None)
+    try:
+        product_data = requests.get('https://www.bitrefill.com/api/product/{}'.format(slug))
+        product_name = product_data.json().get('name', None)
+        if not len(slug):
+            errors['slug'] = 'Should contain at least one character'
+        elif not product_name:
+            errors['slug'] = 'Does not have a product name'
+        else:
+            new_data['product_name'] = product_name
+    except:
+        errors['slug'] = 'Something went wrong during data retrieval'
+
 
     amount = data.get('amount')
     if not amount.isdigit():
@@ -90,8 +99,7 @@ def wait_until(driver, by, value, multiple=False):
             refresh -= 1
 
 
-def fetch(id_, slug, amount, payment, sender, message, color):
-    is_slug_valid = False
+def fetch(id_, product_name, amount, payment, sender, message, color):
     is_amount_valid = True
     res_email = "john@doe.com"
     res_name = "John Doe"
@@ -99,14 +107,12 @@ def fetch(id_, slug, amount, payment, sender, message, color):
         ff = load_chrome_driver()
         ff.delete_all_cookies()
         actionchains = ActionChains(ff)
-        print('Starting extraction for process: {} with slug: {}'.format(id_, slug))
+        print('Starting extraction for process: {} with product name: {}'.format(id_, product_name))
 
-        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(slug.split()[0]))
+        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(product_name.split()[0]))
 
-        product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(slug))
+        product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(product_name))
         product.click()
-
-        is_slug_valid = True
 
         valid_amounts = wait_until(ff, By.XPATH, "//input[@name='value' and @type='radio']", multiple=True)
         valid_amounts = [int(i.get_attribute('value')) for i in amounts]
@@ -162,14 +168,11 @@ def fetch(id_, slug, amount, payment, sender, message, color):
 
         values = {'amount': amount, 'address': address}
         redis.set(id_, json.dumps(values))
-        print('Finishing extraction for process: {} with slug: {}'.format(id_, slug))
+        print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
 
     except Exception as e:
         traceback.print_exc()
-        if not is_slug_valid:
-            redis.set(id_, json.dumps(
-                {'error': 'Invalid slug: {}'.format(slug)}))
-        elif not is_amount_valid:
+        if not is_amount_valid:
             redis.set(id_, json.dumps(
                 {'error': 'Invalid amount, only supports : {}'.format(
                     ', '.join(valid_amounts))}))
