@@ -31,6 +31,7 @@ def validate(data):
     slug = data.get('slug', None)
     try:
         product_data = requests.get('https://www.bitrefill.com/api/product/{}'.format(slug))
+        status_code = product_data.status_code
         product_name = product_data.json().get('name', None)
         if not len(slug):
             errors['slug'] = 'Should contain at least one character'
@@ -42,11 +43,13 @@ def validate(data):
         errors['slug'] = 'Something went wrong during data retrieval'
 
 
-    amount = data.get('amount')
-    if not amount.isdigit():
-        errors['amount'] = 'Has to be a digit'
-    else:
-        new_data['amount'] = int(amount)
+    if status_code == 200:
+        amounts = [package.get('amount', None) for package in product_data.json().get('packages', None)]
+        amount = data.get('amount')
+        if amount not in amounts:
+            errors['amount'] = 'Invalid amount, supported amounts are: {}'.format(', '.join(map(str, amounts)))
+        else:
+            new_data['amount'] = amount
 
     color = data.get('color', 'blue').lower()
     allowed_colors = ['green', 'blue', 'red']
@@ -100,7 +103,6 @@ def wait_until(driver, by, value, multiple=False):
 
 
 def fetch(id_, product_name, amount, payment, sender, message, color):
-    is_amount_valid = True
     res_email = "john@doe.com"
     res_name = "John Doe"
     try:
@@ -113,11 +115,6 @@ def fetch(id_, product_name, amount, payment, sender, message, color):
 
         product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(product_name))
         product.click()
-
-        valid_amounts = wait_until(ff, By.XPATH, "//input[@name='value' and @type='radio']", multiple=True)
-        valid_amounts = [int(i.get_attribute('value')) for i in amounts]
-        if amount not in amounts:
-            is_amount_valid = False
 
         amount_div = wait_until(ff, By.XPATH, "//input[@value='{}']/following-sibling::span[1]".format(amount))
         amount_div.click()
@@ -172,11 +169,6 @@ def fetch(id_, product_name, amount, payment, sender, message, color):
 
     except Exception as e:
         traceback.print_exc()
-        if not is_amount_valid:
-            redis.set(id_, json.dumps(
-                {'error': 'Invalid amount, only supports : {}'.format(
-                    ', '.join(valid_amounts))}))
-        else:
-            redis.set(id_, json.dumps(
+        redis.set(id_, json.dumps(
                 {'error': 'Something went wrong'}))
     ff.close()
