@@ -4,6 +4,7 @@ import string
 import json
 import traceback
 
+import requests
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -27,17 +28,28 @@ def validate(data):
     if errors:
         return errors, None
 
-    slug = data.get('slug')
-    if not len(slug):
-        errors['slug'] = 'Should contain at least one character'
-    else:
-        new_data['slug'] = slug
+    slug = data.get('slug', None)
+    try:
+        product_data = requests.get('https://www.bitrefill.com/api/product/{}'.format(slug))
+        status_code = product_data.status_code
+        product_name = product_data.json().get('name', None)
+        if not len(slug):
+            errors['slug'] = 'Should contain at least one character'
+        elif not product_name:
+            errors['slug'] = 'Does not have a product name'
+        else:
+            new_data['product_name'] = product_name
+    except:
+        errors['slug'] = 'Something went wrong during data retrieval'
 
-    amount = data.get('amount')
-    if not amount.isdigit():
-        errors['amount'] = 'Has to be a digit'
-    else:
-        new_data['amount'] = int(amount)
+
+    if status_code == 200:
+        amounts = [package.get('amount', None) for package in product_data.json().get('packages', None)]
+        amount = data.get('amount')
+        if amount not in amounts:
+            errors['amount'] = 'Invalid amount, supported amounts are: {}'.format(', '.join(map(str, amounts)))
+        else:
+            new_data['amount'] = amount
 
     color = data.get('color', 'blue').lower()
     allowed_colors = ['green', 'blue', 'red']
@@ -90,9 +102,7 @@ def wait_until(driver, by, value, multiple=False):
             refresh -= 1
 
 
-def fetch(id_, slug, amount, payment, sender, message, color):
-    is_slug_valid = False
-    is_amount_valid = True
+def fetch(id_, product_name, amount, payment, sender, message, color):
     res_email = "john@doe.com"
     res_name = "John Doe"
     try:
@@ -105,13 +115,6 @@ def fetch(id_, slug, amount, payment, sender, message, color):
 
         product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(slug))
         product.click()
-
-        is_slug_valid = True
-
-        valid_amounts = wait_until(ff, By.XPATH, "//input[@name='value' and @type='radio']", multiple=True)
-        valid_amounts = [int(i.get_attribute('value')) for i in amounts]
-        if amount not in amounts:
-            is_amount_valid = False
 
         amount_div = wait_until(ff, By.XPATH, "//input[@value='{}']/following-sibling::span[1]".format(amount))
         amount_div.click()
@@ -166,14 +169,6 @@ def fetch(id_, slug, amount, payment, sender, message, color):
 
     except Exception as e:
         traceback.print_exc()
-        if not is_slug_valid:
-            redis.set(id_, json.dumps(
-                {'error': 'Invalid slug: {}'.format(slug)}))
-        elif not is_amount_valid:
-            redis.set(id_, json.dumps(
-                {'error': 'Invalid amount, only supports : {}'.format(
-                    ', '.join(valid_amounts))}))
-        else:
-            redis.set(id_, json.dumps(
+        redis.set(id_, json.dumps(
                 {'error': 'Something went wrong'}))
     ff.close()
