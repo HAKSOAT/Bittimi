@@ -109,7 +109,7 @@ def wait_until(driver, by, value, multiple=False):
         try:
             return WebDriverWait(driver, delay).until(checker((by, value)))
         except:
-            ff.refresh()
+            driver.refresh()
             refresh -= 1
 
 
@@ -118,11 +118,11 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         ff = load_chrome_driver()
         ff.delete_all_cookies()
         actionchains = ActionChains(ff)
-        print('Starting extraction for process: {} with slug: {}'.format(id_, slug))
+        print('Starting extraction for process: {} with product name: {}'.format(id_, product_name))
 
-        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(slug.split()[0]))
+        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(product_name.split()[0]))
 
-        product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(slug))
+        product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(product_name))
         product.click()
 
         amount_div = wait_until(ff, By.XPATH, "//input[@value='{}']/following-sibling::span[1]".format(amount))
@@ -174,7 +174,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
 
         values = {'amount': amount, 'address': address}
         redis.set(id_, json.dumps(values))
-        print('Finishing extraction for process: {} with slug: {}'.format(id_, slug))
+        print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
 
     except Exception as e:
         traceback.print_exc()
