@@ -4,6 +4,7 @@ import string
 import json
 import traceback
 import re
+import time
 
 import requests
 from selenium import webdriver
@@ -97,13 +98,13 @@ def load_chrome_driver():
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
-def wait_until(driver, by, value, multiple=False):
+def wait_until(driver, by, value, multiple=False, refresh=3):
     if multiple:
         checker = EC.presence_of_all_elements_located
     else:
         checker = EC.presence_of_element_located
-        
-    refresh = 3
+
+    refresh = refresh + 1
     delay = 5
     while refresh:
         try:
@@ -113,14 +114,61 @@ def wait_until(driver, by, value, multiple=False):
             refresh -= 1
 
 
+def login(driver):
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    # CHANGE PASSWORD AND EMAIL
+    email = 'Shopejuh@gmail.com'
+    login_email_input = wait_until(driver, By.XPATH, "//input[@type='email']")
+    ActionChains(driver).move_to_element(login_email_input).click().perform()
+    login_email_input.send_keys(email)
+
+    login_password_input = wait_until(ff, By.XPATH, "//input[@type='password']")
+    ActionChains(driver).move_to_element(login_password_input).click().perform()
+    login_password_input.send_keys('G96WJfGAQftH392')
+
+    login_submit = wait_until(ff, By.XPATH, "//button[@type='submit']")
+    ActionChains(driver).move_to_element(login_submit).click().perform()
+    
+    email_display = wait_until(driver, By.XPATH, "//div[contains(text(), '{}')]".format(email.lower()), refresh=2)
+    if email_display:
+        return driver
+
+
+def clear_cart(driver):
+    cart = wait_until(driver, By.XPATH, "//span[contains(text(), 'Cart')]")
+    ActionChains(driver).move_to_element(cart).click().perform()
+    items = wait_until(driver, By.XPATH, "//button[contains(text(), '×')]", multiple=True, refresh=0)
+    if items:
+        for item in items:
+            ActionChains(driver).move_to_element(item).click().perform()
+
+
 def fetch(id_, product_name, amount, payment, sender, message, color, rec_email, rec_name):
+    login_error = True
     try:
         ff = load_chrome_driver()
-        ff.delete_all_cookies()
-        actionchains = ActionChains(ff)
+        ff.get('https://www.bitrefill.com/login')
+
+        if ff.current_url != 'https://www.bitrefill.com/buy':
+            ff = login(ff)
+
+        if ff:
+            login_error = False
+            
         print('Starting extraction for process: {} with product name: {}'.format(id_, product_name))
 
         ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(product_name.split()[0]))
+        
 
         product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(product_name))
         product.click()
@@ -156,15 +204,6 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         checkout = wait_until(ff, By.XPATH, "//a[contains(text(), 'Checkout')]")
         checkout.click()
 
-        #Status updates section
-        email_part = wait_until(ff, By.XPATH, "//input[@type='email']")
-        email_part.clear()
-        email_part.send_keys(rec_email)
-        agree_terms = ff.find_element_by_xpath("//input[@name='agree_terms']/following-sibling::div[1]")
-        ActionChains(ff).move_to_element(agree_terms).click().perform()
-        wait_until(ff, By.XPATH, "//button[contains(text(), 'Continue')]").click()
-            
-
         payment_form = wait_until(ff, By.XPATH, "//h2[contains(text(), 'Choose Payment')]/following-sibling::div[1]")
         method = wait_until(ff, By.XPATH,"//p[contains(text(), '{}')]".format(payment.capitalize()))
         method.click()
@@ -175,9 +214,30 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         values = {'amount': amount, 'address': address}
         redis.set(id_, json.dumps(values))
         print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
+        cookies = {cookie['name']: cookie['value'] for cookie in ff.get_cookies()}
+
+        checks = 20
+        completed = False
+        while checks:
+            cart = requests.get('https://www.bitrefill.com/api/cart', cookies=cookies)
+            count = cart.json().get('count', 0)
+            if count:
+                time.sleep(30)
+            else:
+                completed = True
+                break
+        
+        if completed:
+            print('Order for process: {} with product name: {} completed'.format(id_, product_name))
+        else:
+            print('Order for process: {} with product name: {} expired'.format(id_, product_name))
 
     except Exception as e:
         traceback.print_exc()
+        if login_error:
+            error = 'There was an issue with login'
+        else:
+            error = 'Something went wrong'
         redis.set(id_, json.dumps(
-                {'error': 'Something went wrong'}))
+                {'error': error}))
     ff.close()
