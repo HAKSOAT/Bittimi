@@ -219,12 +219,13 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
         cookies = {cookie['name']: cookie['value'] for cookie in ff.get_cookies()}
 
-        checks = 20
+        checks = 1
         completed = False
         while checks:
             cart = requests.get('https://www.bitrefill.com/api/cart', cookies=cookies)
             count = cart.json().get('count', 0)
             if count:
+                checks -= 1
                 time.sleep(30)
             else:
                 completed = True
@@ -233,6 +234,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         if completed:
             print('Order for process: {} with product name: {} completed'.format(id_, product_name))
         else:
+            redis.set(id_, json.dumps({'error': 'Expired'}))
             print('Order for process: {} with product name: {} expired'.format(id_, product_name))
 
     except Exception as e:

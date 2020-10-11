@@ -9,7 +9,7 @@ from worker import q
 
 
 app = Flask(__name__)
-timeout = 900
+timeout = 1200
 
 
 @app.route('/')
@@ -28,7 +28,7 @@ def run():
         while redis.get(id_):
             id_ = generate_id()
 
-        rear_id = redis.get('rear_id')
+        rear_id = str(redis.get('rear_id'))
 
         data.update({'depends_on': rear_id})
         queue = q.enqueue(fetch, id_, **data)
