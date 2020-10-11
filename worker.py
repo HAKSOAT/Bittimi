@@ -1,16 +1,13 @@
 import os
 
 from rq import Worker, Queue, Connection
-from rq.registry import StartedJobRegistry
-
 
 from config import redis
 
 listen = ['high', 'default', 'low']
 
 
-q = Queue(connection=redis)
-registry = StartedJobRegistry('default', connection=redis)
+q = Queue(connection=redis, default_timeout=900)
 
 
 if __name__ == '__main__':

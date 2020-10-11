@@ -5,10 +5,11 @@ from flask import Flask, request, jsonify
 
 from utils import fetch, validate, generate_id
 from config import redis
-from worker import q, registry
+from worker import q
 
 
 app = Flask(__name__)
+timeout = 900
 
 
 @app.route('/')
@@ -27,19 +28,13 @@ def run():
         while redis.get(id_):
             id_ = generate_id()
 
-        job_ids = q.get_job_ids()
-        print(job_ids)
-        rear_id = job_ids[-1] if job_ids else None
+        rear_id = redis.get('rear_id')
 
         data.update({'depends_on': rear_id})
         queue = q.enqueue(fetch, id_, **data)
 
-        print(queue.id)
-        job_ids = q.get_job_ids()
-        print(job_ids)
-
-        redis.set(id_, json.dumps({}), ex=900)
-        # redis.set('{}_jid'.format(id_), queue, ex=900)
+        redis.set('rear_id', queue.id, ex=timeout)
+        redis.set(id_, json.dumps({}), ex=timeout)
         return jsonify(id = id_)
 
 

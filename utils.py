@@ -151,6 +151,7 @@ def clear_cart(driver):
     if items:
         for item in items:
             ActionChains(driver).move_to_element(item).click().perform()
+    return driver
 
 
 def fetch(id_, product_name, amount, payment, sender, message, color, rec_email, rec_name):
@@ -166,6 +167,8 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
             login_error = False
             
         print('Starting extraction for process: {} with product name: {}'.format(id_, product_name))
+
+        ff = clear_cart(ff)
 
         ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(product_name.split()[0]))
         
