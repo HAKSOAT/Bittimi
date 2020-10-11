@@ -34,7 +34,9 @@ def run():
         data.update({'depends_on': rear_id})
         queue = q.enqueue(fetch, id_, **data)
 
-        print(dir(queue))
+        print(queue.id)
+        job_ids = q.get_job_ids()
+        print(job_ids)
 
         redis.set(id_, json.dumps({}), ex=900)
         # redis.set('{}_jid'.format(id_), queue, ex=900)

@@ -132,11 +132,11 @@ def login(driver):
     ActionChains(driver).move_to_element(login_email_input).click().perform()
     login_email_input.send_keys(email)
 
-    login_password_input = wait_until(ff, By.XPATH, "//input[@type='password']")
+    login_password_input = wait_until(driver, By.XPATH, "//input[@type='password']")
     ActionChains(driver).move_to_element(login_password_input).click().perform()
     login_password_input.send_keys('G96WJfGAQftH392')
 
-    login_submit = wait_until(ff, By.XPATH, "//button[@type='submit']")
+    login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']")
     ActionChains(driver).move_to_element(login_submit).click().perform()
     
     email_display = wait_until(driver, By.XPATH, "//div[contains(text(), '{}')]".format(email.lower()), refresh=2)
