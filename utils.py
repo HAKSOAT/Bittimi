@@ -169,6 +169,11 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         amount_div = wait_until(ff, By.XPATH, "//input[@value='{}']/following-sibling::span[1]".format(amount))
         amount_div.click()
 
+        number = '09026746381'
+        number_input = wait_until(ff, By.XPATH, "//input[@name='recipient']")
+        ActionChains(ff).move_to_element(number_input).click().perform()
+        number_input.send_keys(number)
+
         purchase_gift_button = wait_until(ff, By.XPATH, "//span[contains(text(), 'Purchase as gift')]")
         purchase_gift_button.click()
 
