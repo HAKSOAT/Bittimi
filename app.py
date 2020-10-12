@@ -9,7 +9,7 @@ from worker import q
 
 
 app = Flask(__name__)
-timeout = 1200
+timeout = 1500
 
 
 @app.route('/')

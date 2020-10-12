@@ -110,23 +110,13 @@ def wait_until(driver, by, value, multiple=False, refresh=3):
         try:
             return WebDriverWait(driver, delay).until(checker((by, value)))
         except:
-            driver.refresh()
             refresh -= 1
+
+        if refresh:
+            driver.refresh()
 
 
 def login(driver):
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
-    # CHANGE PASSWORD AND EMAIL
     email = 'Shopejuh@gmail.com'
     login_email_input = wait_until(driver, By.XPATH, "//input[@type='email']")
     ActionChains(driver).move_to_element(login_email_input).click().perform()
@@ -219,23 +209,23 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
         cookies = {cookie['name']: cookie['value'] for cookie in ff.get_cookies()}
 
-        checks = 1
-        completed = False
-        while checks:
-            cart = requests.get('https://www.bitrefill.com/api/cart', cookies=cookies)
-            count = cart.json().get('count', 0)
-            if count:
-                checks -= 1
-                time.sleep(30)
-            else:
-                completed = True
+        max_wait_time = 1200
+        sleep_time = 15
+        max_iter = max_wait_time // sleep_time
+        while max_iter:
+            is_completed = wait_until(ff, By.XPATH, "//*[text()='Order completed' or text()='Thank you for your purchase']", multiple=True, refresh= 0)
+            is_expired = wait_until(ff, By.XPATH, "//*[contains(text(), 'expired')]", multiple=True, refresh= 0)
+            if is_expired:
+                redis.set(id_, json.dumps({'message': 'Order Expired'}))
+                print('Order for process: {} with product name: {} expired'.format(id_, product_name))
                 break
-        
-        if completed:
-            print('Order for process: {} with product name: {} completed'.format(id_, product_name))
-        else:
-            redis.set(id_, json.dumps({'error': 'Expired'}))
-            print('Order for process: {} with product name: {} expired'.format(id_, product_name))
+            elif is_completed:
+                redis.set(id_, json.dumps({'meessage': 'Order Completed'}))
+                print('Order for process: {} with product name: {} completed'.format(id_, product_name))
+                break
+            else:
+                max_iter -= 1
+                time.sleep(15)
 
     except Exception as e:
         traceback.print_exc()
