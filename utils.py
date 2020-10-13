@@ -117,6 +117,12 @@ def wait_until(driver, by, value, multiple=False, refresh=3):
 
 
 def login(driver):
+    # CHANGE LOGIN
+    # CHANGE LOGIN
+    # CHANGE LOGIN
+    # CHANGE LOGIN
+    # CHANGE LOGIN
+    # CHANGE LOGIN
     email = 'Shopejuh@gmail.com'
     login_email_input = wait_until(driver, By.XPATH, "//input[@type='email']")
     ActionChains(driver).move_to_element(login_email_input).click().perform()

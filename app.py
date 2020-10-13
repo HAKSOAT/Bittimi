@@ -47,6 +47,11 @@ def pull():
     else:
         return jsonify(result=json.loads(result))
 
+@app.route('/email', methods=['POST'])
+def email():
+    print(request.json)
+    return jsonify(success=True)
+
 
 if __name__ == "__main__":
     app.run()
