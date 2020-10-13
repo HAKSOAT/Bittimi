@@ -11,6 +11,8 @@ from worker import q
 
 app = Flask(__name__)
 
+timeout = 1500
+
 
 @app.route('/')
 def index():
@@ -33,8 +35,8 @@ def run():
         data.update({'depends_on': rear_id})
         queue = q.enqueue(fetch, id_, **data)
 
-        redis.set('rear_id', queue.id)
-        redis.set(id_, json.dumps({}))
+        redis.set('rear_id', queue.id, ex=timeout)
+        redis.set(id_, json.dumps({}), ex=timeout)
         return jsonify(id = id_)
 
 
@@ -53,7 +55,7 @@ def pull():
 def email():
     message = request.json.get('message', '')
     code = re.search(r'\b[A-Z\d]{4,}', message).group()
-    redis.set('login_code', code)
+    redis.set('login_code', code, ex=60)
     return jsonify(success=True)
 
 

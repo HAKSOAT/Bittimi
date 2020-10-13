@@ -17,6 +17,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 from config import redis
 
+timeout = 1500
+
 
 def validate(data):
     errors = {}
@@ -95,7 +97,7 @@ def load_chrome_driver():
     opts.add_argument("--start-maximized")
     opts.add_argument('--no-sandbox')
     opts.add_argument('--disable-dev-shm-usage')
-    opts.add_argument("user-data-dir=browser_data") 
+    opts.add_argument("user-data-dir=selenium") 
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
@@ -125,26 +127,29 @@ def login(driver):
     # CHANGE LOGIN
     # CHANGE LOGIN
     email = 'Shopejuh@gmail.com'
-    login_email_input = wait_until(driver, By.XPATH, "//input[@type='email']")
+    login_email_input = wait_until(driver, By.XPATH, "//input[@type='email']", refresh=0)
     ActionChains(driver).move_to_element(login_email_input).click().perform()
     login_email_input.send_keys(email)
 
-    login_password_input = wait_until(driver, By.XPATH, "//input[@type='password']")
+    login_password_input = wait_until(driver, By.XPATH, "//input[@type='password']", refresh=0)
     ActionChains(driver).move_to_element(login_password_input).click().perform()
     login_password_input.send_keys('G96WJfGAQftH392')
 
-    # CHECK IF LOGIN INPUT IS NEEDED
-    # login_code = 'login_code'
-    # code = redis.get(login_code, None)
-    # while not code:
-    #     code = redis.get(login_code, None)
-    
-    # redis.delete(login_code)
+    code_input = wait_until(ff, By.XPATH, "//input[@type='text' and @name='code']", refresh=0)
+    if code_input:
+        login_code = 'login_code'
+        code = redis.get(login_code, None)
+        while not code:
+            code = redis.get(login_code, None)
+        redis.delete(login_code)
 
-    login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']")
+        ActionChains(driver).move_to_element(code_input).click().perform()
+        code_input.send_keys(code)
+
+    login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']", refresh=0)
     ActionChains(driver).move_to_element(login_submit).click().perform()
     
-    email_display = wait_until(driver, By.XPATH, "//div[contains(text(), '{}')]".format(email.lower()), refresh=2)
+    email_display = wait_until(driver, By.XPATH, "//div[contains(text(), '{}')]".format(email.lower()), refresh=0)
     if email_display:
         return driver
 
@@ -166,8 +171,9 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         ff.get('https://www.bitrefill.com/login')
 
         current_url = ff.current_url
-        attempts = 5
+        attempts = 3
         while current_url != 'https://www.bitrefill.com/buy':
+            print("TRYING TO LOGIN")
             temp = login(ff)
             if temp:
                 current_url = temp.current_url
@@ -178,6 +184,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
 
         if ff:
             login_error = False
+            print("SUCCESSFULLY LOGGED IN")
 
         cookies = driver.get_cookies()
         cookies = {i['name']: i['value'] for i in cookies}
@@ -237,11 +244,11 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         address = wait_until(ff, By.XPATH, "//span[contains(text(), 'To this')]/following-sibling::input[1]").get_attribute('value')
 
         values = {'amount': amount, 'address': address}
-        redis.set(id_, json.dumps(values))
+        redis.set(id_, json.dumps(values), ex=timeout)
         print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
 
         invoiceid = re.search('checkout/([^\/]+)', ff.current_url).group(1)
-        redis.set('{}_invoiceid'.format(id_), ff.current_url)
+        redis.set('{}_invoiceid'.format(id_), ff.current_url, ex=timeout)
 
     except Exception as e:
         traceback.print_exc()
@@ -250,7 +257,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         else:
             error = 'Something went wrong'
         redis.set(id_, json.dumps(
-                {'error': error}))
+                {'error': error}), ex=timeout)
     ff.close()
 
 
@@ -263,6 +270,9 @@ def find(invoice_id, items):
 def status(id_):
     invoiceid = redis.get('{}_invoiceid'.format(id_))
     cookies = redis.get('cookies')
+    if not cookies:
+        return False
+
     cookies = json.loads(cookies)
 
     orders = requests.get('https://www.bitrefill.com/api/accounts/orders?page=1&page_size=500', cookies=cookies)
