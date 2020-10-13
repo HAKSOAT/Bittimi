@@ -7,7 +7,7 @@ from config import redis
 listen = ['high', 'default', 'low']
 
 
-q = Queue(connection=redis, default_timeout=1200)
+q = Queue(connection=redis, default_timeout=1500)
 
 
 if __name__ == '__main__':

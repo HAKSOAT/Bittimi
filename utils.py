@@ -95,6 +95,7 @@ def load_chrome_driver():
     opts.add_argument("--start-maximized")
     opts.add_argument('--no-sandbox')
     opts.add_argument('--disable-dev-shm-usage')
+    opts.add_argument("user-data-dir=browser_data") 
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
@@ -132,6 +133,14 @@ def login(driver):
     ActionChains(driver).move_to_element(login_password_input).click().perform()
     login_password_input.send_keys('G96WJfGAQftH392')
 
+    # CHECK IF LOGIN INPUT IS NEEDED
+    # login_code = 'login_code'
+    # code = redis.get(login_code, None)
+    # while not code:
+    #     code = redis.get(login_code, None)
+    
+    # redis.delete(login_code)
+
     login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']")
     ActionChains(driver).move_to_element(login_submit).click().perform()
     
@@ -156,11 +165,23 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         ff = load_chrome_driver()
         ff.get('https://www.bitrefill.com/login')
 
-        if ff.current_url != 'https://www.bitrefill.com/buy':
-            ff = login(ff)
+        current_url = ff.current_url
+        attempts = 5
+        while current_url != 'https://www.bitrefill.com/buy':
+            temp = login(ff)
+            if temp:
+                current_url = temp.current_url
+
+            attempts -= 1
+            if not attempts:
+                break
 
         if ff:
             login_error = False
+
+        cookies = driver.get_cookies()
+        cookies = {i['name']: i['value'] for i in cookies}
+        redis.set('cookies', json.dumps(cookies), ex=86400)
             
         print('Starting extraction for process: {} with product name: {}'.format(id_, product_name))
 
@@ -218,25 +239,9 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         values = {'amount': amount, 'address': address}
         redis.set(id_, json.dumps(values))
         print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
-        cookies = {cookie['name']: cookie['value'] for cookie in ff.get_cookies()}
 
-        max_wait_time = 1200
-        sleep_time = 15
-        max_iter = max_wait_time // sleep_time
-        while max_iter:
-            is_completed = wait_until(ff, By.XPATH, "//*[text()='Order completed' or text()='Thank you for your purchase']", multiple=True, refresh= 0)
-            is_expired = wait_until(ff, By.XPATH, "//*[contains(text(), 'expired')]", multiple=True, refresh= 0)
-            if is_expired:
-                redis.set(id_, json.dumps({'message': 'Order Expired'}))
-                print('Order for process: {} with product name: {} expired'.format(id_, product_name))
-                break
-            elif is_completed:
-                redis.set(id_, json.dumps({'meessage': 'Order Completed'}))
-                print('Order for process: {} with product name: {} completed'.format(id_, product_name))
-                break
-            else:
-                max_iter -= 1
-                time.sleep(15)
+        invoiceid = re.search('checkout/([^\/]+)', ff.current_url).group(1)
+        redis.set('{}_invoiceid'.format(id_), ff.current_url)
 
     except Exception as e:
         traceback.print_exc()
@@ -247,3 +252,31 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         redis.set(id_, json.dumps(
                 {'error': error}))
     ff.close()
+
+
+def find(invoice_id, items):
+    for item in items:
+        if item['invoice_id'] == invoiceid:
+            return True
+
+
+def status(id_):
+    invoiceid = redis.get('{}_invoiceid'.format(id_))
+    cookies = redis.get('cookies')
+    cookies = json.loads(cookies)
+
+    orders = requests.get('https://www.bitrefill.com/api/accounts/orders?page=1&page_size=500', cookies=cookies)
+    items = orders['items']
+    if find(invoice_id, items):
+        return True
+    else:
+        page_count = orders['pageCount']
+        for i in range(2, page_count + 1):
+            orders = requests.get('https://www.bitrefill.com/api/accounts/orders?page={}&page_size=500'.format(i), cookies=cookies)
+            items = orders['items']
+            if find(invoice_id, items):
+                return True
+    return False
+
+
+

@@ -1,15 +1,15 @@
 import io
 import json
+import re
 
 from flask import Flask, request, jsonify
 
-from utils import fetch, validate, generate_id
+from utils import fetch, validate, generate_id, status
 from config import redis
 from worker import q
 
 
 app = Flask(__name__)
-timeout = 1500
 
 
 @app.route('/')
@@ -33,8 +33,8 @@ def run():
         data.update({'depends_on': rear_id})
         queue = q.enqueue(fetch, id_, **data)
 
-        redis.set('rear_id', queue.id, ex=timeout)
-        redis.set(id_, json.dumps({}), ex=timeout)
+        redis.set('rear_id', queue.id)
+        redis.set(id_, json.dumps({}))
         return jsonify(id = id_)
 
 
@@ -45,11 +45,15 @@ def pull():
     if result is None:
         return jsonify(error='Resource does not exist'), 404
     else:
-        return jsonify(result=json.loads(result))
+        data = json.loads(result)
+        data.update({'completed': status(id_)})
+        return jsonify(result=data)
 
 @app.route('/email', methods=['POST'])
 def email():
-    print(request.json)
+    message = request.json.get('message', '')
+    code = re.search(r'\b[A-Z\d]{4,}', message).group()
+    redis.set('login_code', code)
     return jsonify(success=True)
 
 
