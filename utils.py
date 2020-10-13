@@ -97,7 +97,6 @@ def load_chrome_driver():
     opts.add_argument("--start-maximized")
     opts.add_argument('--no-sandbox')
     opts.add_argument('--disable-dev-shm-usage')
-    opts.add_argument("user-data-dir=selenium") 
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
@@ -135,19 +134,22 @@ def login(driver):
     ActionChains(driver).move_to_element(login_password_input).click().perform()
     login_password_input.send_keys('G96WJfGAQftH392')
 
-    code_input = wait_until(ff, By.XPATH, "//input[@type='text' and @name='code']", refresh=0)
+    login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']", refresh=0)
+    ActionChains(driver).move_to_element(login_submit).click().perform()
+
+    code_input = wait_until(driver, By.XPATH, "//input[@type='text' and @name='code']", refresh=0)
     if code_input:
         login_code = 'login_code'
-        code = redis.get(login_code, None)
+        code = redis.get(login_code)
         while not code:
-            code = redis.get(login_code, None)
+            print("WAITING FOR CODE")
+            code = redis.get(login_code)
         redis.delete(login_code)
 
         ActionChains(driver).move_to_element(code_input).click().perform()
         code_input.send_keys(code)
-
-    login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']", refresh=0)
-    ActionChains(driver).move_to_element(login_submit).click().perform()
+        login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']", refresh=0)
+        ActionChains(driver).move_to_element(login_submit).click().perform()
     
     email_display = wait_until(driver, By.XPATH, "//div[contains(text(), '{}')]".format(email.lower()), refresh=0)
     if email_display:
