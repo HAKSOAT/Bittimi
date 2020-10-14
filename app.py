@@ -1,10 +1,10 @@
-import io
 import json
 import re
+import uuid
 
 from flask import Flask, request, jsonify
 
-from utils import place_order, validate, generate_id, get_status
+from utils import place_order, validate, get_status
 from config import redis
 from worker import q
 
@@ -26,9 +26,9 @@ def run():
         if errors:
             return jsonify(errors=errors), 400
         
-        id_ = generate_id()
+        id_ = str(uuid.uuid4())
         while redis.get(id_):
-            id_ = generate_id()
+            id_ = str(uuid.uuid4())
 
         rear_id = str(redis.get('rear_id'))
 

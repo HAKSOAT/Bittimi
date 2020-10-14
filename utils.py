@@ -92,11 +92,6 @@ def validate(data):
     return errors, new_data
 
 
-def generate_id():
-    return ''.join(random.SystemRandom().choice(
-        string.ascii_uppercase + string.digits) for _ in range(6))
-
-
 def load_chrome_driver():
     chrome_bin = os.environ.get('GOOGLE_CHROME_SHIM', None)
     opts = ChromeOptions()
