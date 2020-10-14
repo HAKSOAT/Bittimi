@@ -97,6 +97,7 @@ def load_chrome_driver():
     opts.add_argument("--start-maximized")
     opts.add_argument('--no-sandbox')
     opts.add_argument('--disable-dev-shm-usage')
+    opts.add_argument("user-data-dir=/app/selenium")
     return webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
 
 
@@ -107,7 +108,7 @@ def wait_until(driver, by, value, multiple=False, refresh=3):
         checker = EC.presence_of_element_located
 
     refresh = refresh + 1
-    delay = 5
+    delay = 10
     while refresh:
         try:
             return WebDriverWait(driver, delay).until(checker((by, value)))
@@ -143,6 +144,7 @@ def login(driver):
         code = redis.get(login_code)
         while not code:
             print("WAITING FOR CODE")
+            time.sleep(30)
             code = redis.get(login_code)
         redis.delete(login_code)
 
@@ -188,7 +190,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
             login_error = False
             print("SUCCESSFULLY LOGGED IN")
 
-        cookies = driver.get_cookies()
+        cookies = ff.get_cookies()
         cookies = {i['name']: i['value'] for i in cookies}
         redis.set('cookies', json.dumps(cookies), ex=86400)
             
@@ -202,6 +204,7 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(product_name))
         product.click()
 
+        # LOOKS LIKE AN ENTIRE SECTION TO ME
         amount_div = wait_until(ff, By.XPATH, "//input[@value='{}']/following-sibling::span[1]".format(amount))
         amount_div.click()
 
@@ -234,7 +237,9 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
 
         add_to_cart = ff.find_element_by_xpath("//button[contains(text(), 'Add to cart')]")
         ActionChains(ff).move_to_element(add_to_cart).click().perform()
+        #THE END
 
+        # CHECKING FOR CART
         checkout = wait_until(ff, By.XPATH, "//a[contains(text(), 'Checkout')]")
         checkout.click()
 
