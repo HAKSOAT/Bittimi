@@ -48,13 +48,17 @@ def pull():
         return jsonify(error='Resource does not exist'), 404
     else:
         data = json.loads(result)
-        data.update({'completed': status(id_)})
+        if data.get('amount', None):
+            data.update({'completed': status(id_)})
+        else:
+            data.update({'completed': False})
         return jsonify(result=data)
 
 @app.route('/email', methods=['POST'])
 def email():
     message = request.json.get('message', '')
     code = re.search(r'\b[A-Z\d]{4,}', message).group()
+    print(code)
     redis.set('login_code', code, ex=60)
     return jsonify(success=True)
 
