@@ -8,7 +8,6 @@ import time
 
 import requests
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -51,32 +50,37 @@ def validate(data):
 
 
     if status_code == 200:
-        amounts = [package.get('amount', None) for package in product_data.json().get('packages', None)]
+        amounts = [package.get('amount', None)
+                   for package in product_data.json().get('packages', None)]
         amount = data.get('amount')
         if amount not in amounts:
-            errors['amount'] = 'Invalid amount, supported amounts are: {}'.format(', '.join(map(str, amounts)))
+            errors['amount'] = 'Invalid amount, supported amounts are: {}'\
+                .format(', '.join(map(str, amounts)))
         else:
             new_data['amount'] = amount
 
     color = data.get('color', 'blue').lower()
     allowed_colors = ['green', 'blue', 'red']
     if color not in allowed_colors:
-        errors['color'] = 'Invalid color, can only use {}'.format(', '.join(allowed_colors))
+        errors['color'] = 'Invalid color, can only use {}'\
+            .format(', '.join(allowed_colors))
     else:
         new_data['color'] = color
 
     payment = data.get('payment', 'bitcoin').lower()
     allowed_payments = {
-        'bitcoin': 'Bitcoin (BTC)', 'lightning': 'Lightning (BTC)', 'ethereum': 'Ethereum (ETH)', 
-        'litecoin': 'Litecoin (LTC)', 'dogecoin': 'Dogecoin (DOGE)', 'dash': 'Dash (DASH)'}
+        'bitcoin': 'Bitcoin (BTC)', 'lightning': 'Lightning (BTC)',
+        'ethereum': 'Ethereum (ETH)', 'litecoin': 'Litecoin (LTC)',
+        'dogecoin': 'Dogecoin (DOGE)', 'dash': 'Dash (DASH)'}
     
     if payment not in allowed_payments.keys():
-        errors['payment'] = 'Invalid payment method, can only use {}'.format(', '.join(allowed_colors))
+        errors['payment'] = 'Invalid payment method, can only use {}'\
+            .format(', '.join(allowed_colors))
     else:
         new_data['payment'] = allowed_payments[payment]
 
     rec_email = data.get('rec_email', '')
-    if not re.match("[^@]+@[^@]+\.[^@]+", rec_email):
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", rec_email):
         errors['rec_email'] = 'Invalid email address'
     else:
         new_data['rec_email'] = rec_email
@@ -89,7 +93,8 @@ def validate(data):
 
 
 def generate_id():
-    return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(6))
+    return ''.join(random.SystemRandom().choice(
+        string.ascii_uppercase + string.digits) for _ in range(6))
 
 
 def load_chrome_driver():
@@ -100,27 +105,41 @@ def load_chrome_driver():
     opts.add_argument("--start-maximized")
     opts.add_argument('--no-sandbox')
     opts.add_argument('--disable-dev-shm-usage')
-    opts.add_argument("user-data-dir=/app/selenium")
-    
-    driver = webdriver.Chrome(executable_path="chromedriver", chrome_options=opts)
+
+    driver = webdriver.Chrome(
+        executable_path="chromedriver", chrome_options=opts)
+
+    # Loading in stored cookies if they exist
     driver.get('https://www.bitrefill.com/buy')
     cookies = redis.get('cookies')
     if cookies:
         cookies = json.loads(cookies)
-        cookies = [{'name': str(name), 'value': str(value)} for name, value in cookies.items()]
+        cookies = [{'name': str(name), 'value': str(value)}
+                   for name, value in cookies.items()]
         for cookie in cookies:
             driver.add_cookie(cookie)
     return driver
 
 
-def wait_until(driver, by, value, multiple=False, refresh=0):
+def wait_until(driver, by, value, refresh=0, multiple=False, delay=10):
+    """
+    Fetches an element from the page.
+    Returns None if element is not found.
+
+    :param driver:
+    :param by: Selector tool
+    :param value: Value to be passed into the selector tool specified in the `by` argument
+    :param refresh: Number of times page is refreshed if element is not found
+    :param multiple: Fetches only the first match if true, otherwise, fetches all
+    :param delay: Period to wait for element to appear
+    :return:
+    """
     if multiple:
         checker = EC.presence_of_all_elements_located
     else:
         checker = EC.presence_of_element_located
 
     refresh = refresh + 1
-    delay = 10
     while refresh:
         try:
             return WebDriverWait(driver, delay).until(checker((by, value)))
@@ -132,54 +151,77 @@ def wait_until(driver, by, value, multiple=False, refresh=0):
 
 
 def login(driver):
-    # CHANGE LOGIN
-    # CHANGE LOGIN
-    # CHANGE LOGIN
-    # CHANGE LOGIN
-    # CHANGE LOGIN
-    # CHANGE LOGIN
-    email = 'Shopejuh@gmail.com'
-    login_email_input = wait_until(driver, By.XPATH, "//input[@type='email']", refresh=0)
-    ActionChains(driver).move_to_element(login_email_input).click().perform()
-    login_email_input.send_keys(email)
+    """
+    Logs into the web page using login details set as environment variables
+    BITREFILL_EMAIL, BITREFILL_PASSWORD.
 
-    login_password_input = wait_until(driver, By.XPATH, "//input[@type='password']", refresh=0)
-    ActionChains(driver).move_to_element(login_password_input).click().perform()
-    login_password_input.send_keys('G96WJfGAQftH392')
+    Returns the driver if login is successful, otherwise returns None.
 
-    login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']", refresh=0)
-    ActionChains(driver).move_to_element(login_submit).click().perform()
+    :param driver:
+    :return: driver
+    """
+    email = os.getenv('BITREFILL_EMAIL', None)
+    password = os.getenv('BITREFILL_PASSWORD', None)
 
-    code_input = wait_until(driver, By.XPATH, "//input[@type='text' and @name='code']", refresh=0)
+    email_input = wait_until(driver, By.XPATH, "//input[@type='email']")
+    ActionChains(driver).move_to_element(email_input).click().perform()
+    email_input.send_keys(email)
+
+    password_input = wait_until(driver, By.XPATH,
+                                "//input[@type='password']")
+    ActionChains(driver).move_to_element(password_input).click().perform()
+    password_input.send_keys(password)
+
+    submit = wait_until(driver, By.XPATH, "//button[@type='submit']")
+    ActionChains(driver).move_to_element(submit).click().perform()
+
+    # Bitrefill may request a login code on some occasions
+    # This is dependent on a Zapier-Gmail integration, which should send in
+    # the login code.
+    code_input = wait_until(driver, By.XPATH,
+                            "//input[@type='text' and @name='code']")
     if code_input:
         login_code = 'login_code'
         code = redis.get(login_code)
         for _ in range(10):
             if code:
                 break
-            print("WAITING FOR CODE")
             time.sleep(30)
             code = redis.get(login_code)
         redis.delete(login_code)
 
         ActionChains(driver).move_to_element(code_input).click().perform()
-        code_input.send_keys(str(code))
-        login_submit = wait_until(driver, By.XPATH, "//button[@type='submit']", refresh=0)
-        ActionChains(driver).move_to_element(login_submit).click().perform()
-    
-    email_display = wait_until(driver, By.XPATH, "//div[contains(text(), '{}')]".format(email.lower()), refresh=0)
+        code_input.send_keys(code.decode("utf-8"))
+        submit = wait_until(driver, By.XPATH, "//button[@type='submit']")
+        ActionChains(driver).move_to_element(submit).click().perform()
+
+    # Checking the top right of the web page to see if the email is displayed
+    # Serves as confirmation of a successful login
+    email_display = wait_until(
+        driver, By.XPATH,
+        "//div[contains(text(), '{}')]".format(email.lower()))
     if email_display:
         cookies = driver.get_cookies()
         cookies = {i['name']: i['value'] for i in cookies}
         redis.set('cookies', json.dumps(cookies), ex=86400)
+        print("Login successful")
         return driver
 
 
 def clear_cart(driver):
+    """
+    Clears the user cart.
+
+    Returns the driver if successful, otherwise returns None.
+
+    :param driver:
+    :return:
+    """
     try:
         cart = wait_until(driver, By.XPATH, "//span[contains(text(), 'Cart')]")
         ActionChains(driver).move_to_element(cart).click().perform()
-        items = wait_until(driver, By.XPATH, "//button[contains(text(), '×')]", multiple=True, refresh=0)
+        items = wait_until(driver, By.XPATH, "//button[contains(text(), '×')]",
+                           multiple=True, refresh=0)
         if items:
             for item in items:
                 ActionChains(driver).move_to_element(item).click().perform()
@@ -188,7 +230,22 @@ def clear_cart(driver):
         print(e)
 
 
-def fetch(id_, product_name, amount, payment, sender, message, color, rec_email, rec_name):
+def place_order(id_, product_name, amount, payment, sender, message, color,
+                rec_email, rec_name):
+    """
+    Places an order for a product.
+
+    :param id_:
+    :param product_name:
+    :param amount:
+    :param payment:
+    :param sender:
+    :param message:
+    :param color:
+    :param rec_email:
+    :param rec_name:
+    :return: None
+    """
     login_error = True
     attempts = 3
     try:
@@ -199,7 +256,6 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
         for i in range(attempts):
             if current_url == 'https://www.bitrefill.com/buy':
                 break
-            print("TRYING TO LOGIN")
             temp = login(ff)
             if temp:
                 current_url = temp.current_url
@@ -208,11 +264,11 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
 
         if ff:
             login_error = False
-            print("SUCCESSFULLY LOGGED IN")        
             
         print('Starting extraction for process: {} with product name: {}'.format(id_, product_name))
 
-
+        # It is important to clear the cart before placing a new order
+        # Otherwise the new order gets added to a non-empty cart
         temp = clear_cart(ff)
         for i in range(attempts):
             if temp:
@@ -221,85 +277,103 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
                 ff.get('https://www.bitrefill.com/buy')
                 temp = clear_cart(ff)
 
-        
-        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(product_name.split()[0]))
-        product = wait_until(ff, By.XPATH, "//p[contains(text(), '{}')]".format(product_name), refresh=3)
+        ff.get('https://www.bitrefill.com/buy/worldwide/?hl=en&q={}'.format(
+            product_name.split()[0]))
+        product = wait_until(
+            ff, By.XPATH,
+            "//p[contains(text(), '{}')]".format(product_name), 3)
         product.click()
 
-        # LOOKS LIKE AN ENTIRE SECTION TO ME
+        # Placing an order on desired product
         for i in range(attempts):
             try:
-                amount_div = wait_until(ff, By.XPATH, "//input[@value='{}']/following-sibling::span[1]".format(amount))
+                amount_div = wait_until(
+                    ff, By.XPATH,
+                    "//input[@value='{}']/following-sibling::span[1]".format(amount))
                 amount_div.click()
 
                 number = '09026746381'
-                number_input = wait_until(ff, By.XPATH, "//input[@name='recipient']")
+                number_input = wait_until(
+                    ff, By.XPATH, "//input[@name='recipient']")
                 ActionChains(ff).move_to_element(number_input).click().perform()
                 number_input.send_keys(number)
-# {"slug": "roblox-usa", "amount": 50, "rec_name": "Habeeb Shopeju", "rec_email": "shopejuh@gmail.com", "payment": "bitcoin"}
 
-                purchase_gift_button = wait_until(ff, By.XPATH, "//span[contains(text(), 'Purchase as gift')]")
+                purchase_gift_button = wait_until(
+                    ff, By.XPATH, "//span[contains(text(), 'Purchase as gift')]")
                 purchase_gift_button.click()
 
-                rec_name_input = wait_until(ff, By.XPATH, "//input[@name='gift_recipient_name']")
+                rec_name_input = wait_until(
+                    ff, By.XPATH, "//input[@name='gift_recipient_name']")
                 ActionChains(ff).move_to_element(rec_name_input).click().perform()
                 rec_name_input.send_keys(rec_name)
 
-                senders_name_input = wait_until(ff, By.XPATH, "//input[@name='gift_sender_name']")
+                senders_name_input = wait_until(
+                    ff, By.XPATH, "//input[@name='gift_sender_name']")
                 ActionChains(ff).move_to_element(senders_name_input).click().perform()
                 senders_name_input.send_keys(sender)
 
-                rec_email_input = wait_until(ff, By.XPATH, "//input[@name='gift_recipient_email']")
+                rec_email_input = wait_until(
+                    ff, By.XPATH, "//input[@name='gift_recipient_email']")
                 ActionChains(ff).move_to_element(rec_email_input).click().perform()
                 rec_email_input.send_keys(rec_email)
 
-                message_input = wait_until(ff, By.XPATH, "//textarea[@name='gift_message']")
+                message_input = wait_until(
+                    ff, By.XPATH, "//textarea[@name='gift_message']")
                 ActionChains(ff).move_to_element(message_input).click().perform()
                 message_input.send_keys(message)
 
-                color_div = wait_until(ff, By.XPATH, "//div[contains(text(), '{}')]".format(color.capitalize()))
+                color_div = wait_until(
+                    ff, By.XPATH, "//div[contains(text(), '{}')]".format(color.capitalize()))
                 ActionChains(ff).move_to_element(color_div).click().perform()
 
-                add_to_cart = ff.find_element_by_xpath("//button[contains(text(), 'Add to cart')]")
+                add_to_cart = ff.find_element_by_xpath(
+                    "//button[contains(text(), 'Add to cart')]")
                 ActionChains(ff).move_to_element(add_to_cart).click().perform()
                 break
             except Exception as e:
                 print(e)
                 ff.refresh()
 
-        #THE END
-
-        # CHECKING FOR CART
-        checkout = wait_until(ff, By.XPATH, "//a[contains(text(), 'Checkout')]")
+        # Checking out the item.
+        # For some reason, the checkout button may not be directly clickable.
+        checkout = wait_until(
+            ff, By.XPATH, "//a[contains(text(), 'Checkout')]")
         for i in range(attempts):
             if checkout:
                 break
-            cart = wait_until(driver, By.XPATH, "//span[contains(text(), 'Cart')]", refresh=3)
-            ActionChains(driver).move_to_element(cart).click().perform()
-            checkout = wait_until(ff, By.XPATH, "//a[contains(text(), 'Checkout')]")
+            cart = wait_until(
+                ff, By.XPATH, "//span[contains(text(), 'Cart')]", 3)
+            ActionChains(ff).move_to_element(cart).click().perform()
+            checkout = wait_until(
+                ff, By.XPATH, "//a[contains(text(), 'Checkout')]")
         checkout.click()
 
+        # Choosing the payment method
         for i in range(attempts):
             try:
-                payment_form = wait_until(ff, By.XPATH, "//h2[contains(text(), 'Choose Payment')]/following-sibling::div[1]", refresh=0)
-                method = wait_until(ff, By.XPATH, "//p[text()='{}']".format(payment), refresh=0)
+                method = wait_until(
+                    ff, By.XPATH, "//p[text()='{}']".format(payment))
                 method.click()
                 break
             except Exception as e:
                 print(e)
                 ff.refresh()
 
-        amount = wait_until(ff, By.XPATH, "//span[contains(text(), 'Send this')]/following-sibling::input[1]", refresh=3).get_attribute('value')
-        address = wait_until(ff, By.XPATH, "//span[contains(text(), 'To this')]/following-sibling::input[1]", refresh=3).get_attribute('value')
+        crypto_amount = wait_until(ff, By.XPATH,
+                            "//span[contains(text(), 'Send this')]/following-sibling::input[1]", 3)
+        crypto_amount = crypto_amount.get_attribute('value')
+        crypto_address = wait_until(ff, By.XPATH,
+                             "//span[contains(text(), 'To this')]/following-sibling::input[1]", 3)
+        crypto_address = crypto_address.get_attribute('value')
 
-        values = {'amount': amount, 'address': address}
+        values = {'amount': crypto_amount, 'address': crypto_address}
         redis.set(id_, json.dumps(values), ex=timeout)
         print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
 
-        invoiceid = re.search('checkout/([^\/]+)', ff.current_url).group(1)
-        redis.set('{}_invoiceid'.format(id_), ff.current_url, ex=timeout)
+        invoiceid = re.search(r'checkout/([^/]+)', ff.current_url).group(1)
+        redis.set('{}_invoiceid'.format(id_), invoiceid, ex=timeout)
 
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         if login_error:
             error = 'There was an issue with login'
@@ -311,26 +385,45 @@ def fetch(id_, product_name, amount, payment, sender, message, color, rec_email,
 
 
 def find(invoiceid, items):
+    """
+    Checks if an order exists in a list of items using the invoice id.
+
+    :param invoiceid:
+    :param items:
+    :return:
+    """
     for item in items:
         if item['invoice_id'] == invoiceid:
             return True
 
 
-def status(id_):
-    invoiceid = redis.get('{}_invoiceid'.format(id_))
+def get_status(id_):
+    """
+    Fetches the status of an order.
+
+    :param id_:
+    :return:
+    """
+    invoiceid = redis.get('{}_invoiceid'.format(id_)).decode("utf-8")
     cookies = json.loads(redis.get('cookies'))
 
     if not cookies:
         return False
 
-    orders = requests.get('https://www.bitrefill.com/api/accounts/orders?page=1&page_size=500', cookies=cookies).json()
+    orders = requests.get(
+        'https://www.bitrefill.com/api/accounts/orders?page=1&page_size=500',
+        cookies=cookies).json()
+
     items = orders.get('items', None)
     if find(invoiceid, items):
+        print('Found')
         return True
     else:
         page_count = orders['pageCount']
         for i in range(2, page_count + 1):
-            orders = requests.get('https://www.bitrefill.com/api/accounts/orders?page={}&page_size=500'.format(i), cookies=cookies).json()
+            orders = requests.get(
+                'https://www.bitrefill.com/api/accounts/orders?page={}&page_size=500'.format(i),
+                cookies=cookies).json()
             items = orders.get('items', None)
             if find(invoiceid, items):
                 return True

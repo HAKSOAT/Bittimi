@@ -4,7 +4,7 @@ import re
 
 from flask import Flask, request, jsonify
 
-from utils import fetch, validate, generate_id, status
+from utils import place_order, validate, generate_id, get_status
 from config import redis
 from worker import q
 
@@ -33,11 +33,11 @@ def run():
         rear_id = str(redis.get('rear_id'))
 
         data.update({'depends_on': rear_id})
-        queue = q.enqueue(fetch, id_, **data)
+        queue = q.enqueue(place_order, id_, **data)
 
         redis.set('rear_id', queue.id, ex=timeout)
         redis.set(id_, json.dumps({}), ex=timeout)
-        return jsonify(id = id_)
+        return jsonify(id=id_)
 
 
 @app.route('/pull', methods=['GET'])
@@ -49,16 +49,14 @@ def pull():
     else:
         data = json.loads(result)
         if data.get('amount', None):
-            data.update({'completed': status(id_)})
-        else:
-            data.update({'completed': False})
-        return jsonify(result=data)
+            data.update({'completed': get_status(id_)})
+        return jsonify(data)
+
 
 @app.route('/email', methods=['POST'])
 def email():
     message = request.json.get('message', '')
     code = re.search(r'\b[A-Z\d]{4,}', message).group()
-    print(code)
     redis.set('login_code', code, ex=60)
     return jsonify(success=True)
 
