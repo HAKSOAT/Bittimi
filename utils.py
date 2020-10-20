@@ -1,6 +1,4 @@
 import os
-import random
-import string
 import json
 import traceback
 import re
@@ -15,8 +13,6 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.action_chains import ActionChains
 
 from config import redis
-
-timeout = 1500
 
 
 def validate(data):
@@ -198,7 +194,7 @@ def login(driver):
     if email_display:
         cookies = driver.get_cookies()
         cookies = {i['name']: i['value'] for i in cookies}
-        redis.set('cookies', json.dumps(cookies), ex=86400)
+        redis.set('cookies', json.dumps(cookies))
         print("Login successful")
         return driver
 
@@ -356,11 +352,11 @@ def place_order(id_, product_name, amount, payment, sender, message, color,
         crypto_address = crypto_address.get_attribute('value')
 
         values = {'amount': crypto_amount, 'address': crypto_address}
-        redis.set(id_, json.dumps(values), ex=timeout)
+        redis.set(id_, json.dumps(values))
         print('Finishing extraction for process: {} with product name: {}'.format(id_, product_name))
 
         invoiceid = re.search(r'checkout/([^/]+)', ff.current_url).group(1)
-        redis.set('{}_invoiceid'.format(id_), invoiceid, ex=timeout)
+        redis.set('{}_invoiceid'.format(id_), invoiceid)
 
     except Exception:
         traceback.print_exc()
@@ -368,8 +364,7 @@ def place_order(id_, product_name, amount, payment, sender, message, color,
             error = 'There was an issue with login'
         else:
             error = 'Something went wrong'
-        redis.set(id_, json.dumps(
-                {'error': error}), ex=timeout)
+        redis.set(id_, json.dumps({'error': error}))
     ff.close()
 
 

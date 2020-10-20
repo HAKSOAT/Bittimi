@@ -11,8 +11,6 @@ from worker import q
 
 app = Flask(__name__)
 
-timeout = 1500
-
 
 @app.route('/')
 def index():
@@ -35,8 +33,8 @@ def run():
         data.update({'depends_on': rear_id})
         queue = q.enqueue(place_order, id_, **data)
 
-        redis.set('rear_id', queue.id, ex=timeout)
-        redis.set(id_, json.dumps({}), ex=timeout)
+        redis.set('rear_id', queue.id)
+        redis.set(id_, json.dumps({}))
         return jsonify(id=id_)
 
 
