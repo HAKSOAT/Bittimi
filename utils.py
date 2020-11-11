@@ -348,7 +348,7 @@ def place_order(id_, product_name, amount, payment, sender, message, color,
                             "//span[contains(text(), 'Send this')]/following-sibling::input[1]", 3)
         crypto_amount = crypto_amount.get_attribute('value')
         crypto_address = wait_until(ff, By.XPATH,
-                             "//span[contains(text(), 'To this')]/following-sibling::input[2]", 3)
+                             "//div[contains(text(), 'To this')]/parent::span/following-sibling::input[2]", 3)
         crypto_address = crypto_address.get_attribute('value')
 
         values = {'amount': crypto_amount, 'address': crypto_address}
