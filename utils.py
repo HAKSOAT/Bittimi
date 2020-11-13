@@ -281,6 +281,10 @@ def place_order(id_, product_name, amount, payment, sender, message, color,
                 amount_div = wait_until(
                     ff, By.XPATH,
                     "//input[@value='{}']/following-sibling::span[1]".format(amount))
+                if not amount_div:
+                    amount_div = wait_until(
+                        ff, By.XPATH,
+                        "//select/option[@value='{}']".format(amount))
                 amount_div.click()
 
                 purchase_gift_button = wait_until(
